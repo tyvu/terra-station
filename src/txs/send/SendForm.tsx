@@ -14,9 +14,10 @@ import { ExternalLink } from "components/general"
 import { Auto, Card, Grid, InlineFlex } from "components/layout"
 import { Form, FormItem, FormHelp, Input, FormWarning } from "components/form"
 import AddressBookList from "../AddressBook/AddressBookList"
-import { getPlaceholder, toInput, CoinInput } from "../utils"
+import { getPlaceholder, toInput, calcTaxes, CoinInput } from "../utils"
 import validate from "../validate"
 import Tx, { getInitialGasDenom } from "../Tx"
+import { useTaxParams } from "../wasm/TaxParams"
 
 interface TxValues {
   recipient?: string // AccAddress | TNS
@@ -37,6 +38,7 @@ const SendForm = ({ token, decimals, balance }: Props) => {
 
   /* tx context */
   const initialGasDenom = getInitialGasDenom(bankBalance)
+  const taxParams = useTaxParams()
 
   /* form */
   const form = useForm<TxValues>({ mode: "onChange" })
@@ -98,7 +100,7 @@ const SendForm = ({ token, decimals, balance }: Props) => {
   )
 
   /* fee */
-  const coins = [{ input, denom: token, taxRequired: true }] as CoinInput[]
+  const taxes = calcTaxes([{ input, denom: token }] as CoinInput[], taxParams)
   const estimationTxValues = useMemo(
     () => ({ address: connectedAddress, input: toInput(1, decimals) }),
     [connectedAddress, decimals]
@@ -116,15 +118,14 @@ const SendForm = ({ token, decimals, balance }: Props) => {
     token,
     decimals,
     amount,
-    coins,
     balance,
+    taxes,
     initialGasDenom,
     estimationTxValues,
     createTx,
     disabled,
     onChangeMax,
     onSuccess: { label: t("Wallet"), path: "/wallet" },
-    taxRequired: true,
     queryKeys: AccAddress.validate(token)
       ? [[queryKey.wasm.contractQuery, token, { balance: connectedAddress }]]
       : undefined,
